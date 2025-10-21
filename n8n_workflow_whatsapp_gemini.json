@@ -1,0 +1,108 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "webhook/whatsapp",
+                "responseMode": "lastNode",
+                "responseData": "={{$json}}"
+            },
+            "name": "Webhook",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "prompt",
+                            "value": "Você é um assistente de atendimento ao cliente para a empresa X. Responda em português de forma clara e concisa. Mensagem do cliente: {{$json[\"body\"]}}"
+                        }
+                    ]
+                }
+            },
+            "name": "Set Prompt",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [
+                500,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "requestMethod": "POST",
+                "url": "={{$env.GEMINI_API_URL || 'https://example-gemini-api.local/generate'}}",
+                "jsonParameters": true,
+                "options": {},
+                "bodyParametersJson": "={ \n  \"prompt\": $json[\"prompt\"]\n}"
+            },
+            "name": "Call Gemini",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                800,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "requestMethod": "POST",
+                "url": "http://localhost:3000/review",
+                "jsonParameters": true,
+                "options": {
+                    "bodyContentType": "json"
+                },
+                "bodyParametersJson": "={\n  \"to\": \"{{$json[\\\"from\\\"]}}\",\n  \"text\": \"{{$json[\\\"response\\\"] || $json[\\\"body\\\"]}}\"\n}",
+                "headerParametersJson": "={\n  \"x-send-token\": \"__SEND_TOKEN__\"\n}"
+            },
+            "name": "Post to Bot Review",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 1,
+            "position": [
+                1100,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Set Prompt",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Set Prompt": {
+            "main": [
+                [
+                    {
+                        "node": "Call Gemini",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Call Gemini": {
+            "main": [
+                [
+                    {
+                        "node": "Post to Bot Review",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
