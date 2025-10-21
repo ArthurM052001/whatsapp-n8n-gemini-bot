@@ -1,5 +1,85 @@
 # WhatsApp n8n Gemini Bot (QR / WhatsApp Web)
 
+Este repositório contém um scaffold Node.js que integra:
+- Conexão WhatsApp via `whatsapp-web.js` (QR)
+- Orquestração e chamadas ao modelo (Gemini) via n8n
+- Mecanismo de revisão humana antes do envio ao cliente
+Objetivo: fornecer um bot de atendimento que você possa testar rapidamente e, quando estiver confortável, colocar em produção.
+
+---
+## Sumário rápido
+- Quickstart (instalação e execução)
+- Como configurar o n8n e importar o workflow
+- Onde colocar a chave do Gemini (segurança)
+- Fluxo de revisão humana (recomendado nos primeiros dias)
+- Publicar no GitHub (limpar arquivos desnecessários)
+
+---
+## Quickstart (testar localmente)
+
+1. Instale dependências
+
+```bat
+cd /d d:\Users\arthur.silva\Desktop\Bot
+npm install
+2. Crie `.env` (copie de `.env.example`) e edite os valores:
+
+```
+N8N_WEBHOOK_URL=http://localhost:5678/webhook/whatsapp
+PORT=3000
+SEND_TOKEN=um_token_seguro_aqui
+3. Inicie o bot (ele mostrará um QR na primeira execução)
+
+```bat
+4. Abra n8n em http://localhost:5678 e importe o workflow `n8n_workflow_whatsapp_gemini.json` (Workflows → Import)
+
+5. No n8n, ajuste o node `Post to Bot Review` para colocar o header `x-send-token` igual ao `SEND_TOKEN` do `.env` e ajustar a URL para `http://localhost:3000/review` (já configurada no JSON como placeholder `__SEND_TOKEN__`).
+---
+
+## Configurar a chave do Gemini (recomendado via Credentials no n8n)
+
+1. No n8n: Settings → Credentials → New Credential
+2. Escolha `HTTP Header Auth` e defina:
+	- Header name: Authorization
+	- Header value: Bearer <SUA_CHAVE_DO_GEMINI>
+3. No node `Call Gemini` selecione a credential criada.
+
+Se preferir usar variáveis de ambiente, defina `GEMINI_API_KEY` e `GEMINI_API_URL` no ambiente que roda o n8n e no node HTTP Request use `{{$env.GEMINI_API_KEY}}` e `{{$env.GEMINI_API_URL}}`.
+---
+
+## Revisão humana (fluxo recomendado)
+
+1. n8n chama o Gemini e posta a resposta sugerida em `/review` do bot (o bot armazena em `reviews.json`).
+2. Um atendente acessa `http://localhost:3000/reviews?token=SEND_TOKEN` para ver pendências.
+3. Para aprovar e enviar, o atendente executa um POST para `/reviews/:id/approve` com o header `x-send-token`.
+
+Opções avançadas: notificar o operador por WhatsApp com o texto sugerido e instrução para aprovar por web ou respondendo `APPROVE <id>` (pode ser ativado no workflow e em `index.js`).
+---
+
+## Publicar no GitHub — limpar arquivos sensíveis / desnecessários
+
+Antes de publicar, remova arquivos de sessão e cache do índice do git (não recomendado commitar `.wwebjs_auth/` ou `.wwebjs_cache/`). Este repositório já inclui scripts para ajudar:
+- `publish_to_github.bat` — prepara e tenta enviar ao remoto
+- `cleanup_repo.bat` — remove do índice `.wwebjs_auth` e `.wwebjs_cache`, atualiza `.gitignore` e commita
+- `CLEAN_HISTORY_INSTRUCTIONS.md` — instruções para remover arquivos do histórico (BFG/git-filter-repo) caso já tenham sido pushados
+
+Execute `cleanup_repo.bat` para remover os arquivos de sessão do índice local, commitar e depois rode `git push origin main`.
+---
+
+## Estrutura do repositório
+- `index.js` — bot WhatsApp (QR login, endpoints `/send`, `/review`, `/reviews`)
+- `n8n_workflow_whatsapp_gemini.json` — workflow de exemplo para importar no n8n
+- `.env.example` — variáveis de ambiente necessárias
+- `README.md`, `USAGE.md`, `CONTRIBUTING.md` — documentação
+
+---
+## Ajuda / Suporte
+Se algo falhar (erro no Puppeteer, token inválido, problema ao importar o workflow), cole aqui o log/erro e eu te ajudo passo a passo.
+
+---
+Obrigado por usar este scaffold — se quiser eu limpo o histórico remoto (remoção permanente de arquivos sensíveis) e finalizo o push para você, mas isso requer que você execute alguns comandos locais (eu te oriento).
+# WhatsApp n8n Gemini Bot (QR / WhatsApp Web)
+
 Este repositório contém um scaffold Node.js que usa `whatsapp-web.js` para conectar ao WhatsApp Web via QR code. O bot encaminha mensagens recebidas para um webhook do n8n, onde você pode ligar a chamada à API Gemini.
 
 Pré-requisitos:
